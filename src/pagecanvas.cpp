@@ -65,13 +65,16 @@ void PageCanvas::addTextElement(const QPointF& scenePos, const QString& text) {
     expandSceneToFit();
 }
 
-void PageCanvas::addImageElement(const QPointF& scenePos, const QString& mediaFileName, const QByteArray& data) {
+ImageElement* PageCanvas::addImageElement(const QPointF& scenePos, const QString& mediaFileName, const QByteArray& data, qreal displayWidth) {
     ImageElement* element = new ImageElement;
     element->setMediaFileName(mediaFileName);
     element->setImageData(data);
+    if (displayWidth > 0 && !element->pixmap().isNull() && element->pixmap().width() > displayWidth)
+        element->setScale(displayWidth / element->pixmap().width());
     element->setPos(scenePos);
     mScene->addItem(element);
     expandSceneToFit();
+    return element;
 }
 
 void PageCanvas::zoomIn() {

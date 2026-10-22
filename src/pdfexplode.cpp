@@ -6,6 +6,7 @@
 #ifdef QTNOTEBOOK_HAS_QTPDF
 #include <QPdfDocument>
 #include <QImage>
+#include <QPainter>
 #endif
 
 bool PdfExplode::isAvailable() {
@@ -45,12 +46,21 @@ PdfExplode::Result PdfExplode::explodePdf(const QString& pdfPath, const QString&
     for (int page = 0; page < result.pageCount; ++page) {
         const QSizeF pointSize = document.pagePointSize(page);
         const QSize imageSize(qRound(pointSize.width() * scale), qRound(pointSize.height() * scale));
-        const QImage image = document.render(page, imageSize);
-        if (image.isNull()) {
+        const QImage rendered = document.render(page, imageSize);
+        if (rendered.isNull()) {
             result.error = QStringLiteral("Rendering page %1 of %2 failed").arg(page + 1).arg(pdfPath);
             result.pngPaths.clear();
             return result;
         }
+        // QPdfDocument renders onto transparency (alpha 0 where the PDF
+        // paints nothing). Exploded pages are paper: flatten onto white
+        // so a page occludes what's behind it on the canvas and prints
+        // as it looked in the PDF.
+        QImage image(rendered.size(), QImage::Format_RGB32);
+        image.fill(Qt::white);
+        QPainter painter(&image);
+        painter.drawImage(0, 0, rendered);
+        painter.end();
         const QString pngPath = dir.filePath(QStringLiteral("page-%1.png").arg(page + 1));
         if (!image.save(pngPath, "PNG")) {
             result.error = QStringLiteral("Could not save rendered page to %1").arg(pngPath);

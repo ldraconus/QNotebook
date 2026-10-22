@@ -13,6 +13,7 @@
 #include <QJsonObject>
 #include <QList>
 
+class ImageElement;
 class QGraphicsScene;
 
 class PageCanvas : public QGraphicsView
@@ -27,7 +28,11 @@ public:
     void collectInto(Page* page) const;
 
     void addTextElement(const QPointF& scenePos, const QString& text = QString());
-    void addImageElement(const QPointF& scenePos, const QString& mediaFileName, const QByteArray& data);
+    // If displayWidth > 0 and the image is wider than that, the element is
+    // scaled down to displayWidth scene units (aspect preserved, never
+    // upscaled). Returns the element so callers can stack by its real
+    // displayed height.
+    ImageElement* addImageElement(const QPointF& scenePos, const QString& mediaFileName, const QByteArray& data, qreal displayWidth = 0);
 
     void zoomIn();
     void zoomOut();

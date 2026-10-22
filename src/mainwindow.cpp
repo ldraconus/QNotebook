@@ -1,5 +1,6 @@
 #include "mainwindow.h"
 
+#include "elements/imageelement.h"
 #include "pagecanvas.h"
 #include "pdfexplode.h"
 
@@ -18,6 +19,11 @@
 #include <QTemporaryDir>
 #include <QToolBar>
 #include <QTreeWidget>
+
+// Widest an inserted image / exploded PDF page is displayed on the canvas,
+// in scene units. Native pixels are kept for the stored media; this only
+// sets the element's display scale, which the user can resize afterward.
+const qreal kMaxImageDisplayWidth = 850;
 
 MainWindow::MainWindow(QWidget* parent) : QMainWindow(parent) {
     setWindowTitle(QStringLiteral("QtNotebook"));
@@ -340,7 +346,7 @@ void MainWindow::insertImage() {
     const QByteArray data = file.readAll();
     const QString mediaName = QFileInfo(path).fileName();
     const QPointF center = mCanvas->mapToScene(mCanvas->viewport()->rect().center());
-    mCanvas->addImageElement(center, mediaName, data);
+    mCanvas->addImageElement(center, mediaName, data, kMaxImageDisplayWidth);
     // Record the bytes on the current page now, so Save works even if the
     // pixmap round-trip in collectInto would re-encode them anyway.
     Page* current = mNotebook.findPage(mCurrentPageId);
@@ -384,7 +390,11 @@ void MainWindow::insertPdf() {
         const QString mediaName = QFileInfo(pngPath).fileName();
         if (current != nullptr)
             current->media.insert(mediaName, data);
-        mCanvas->addImageElement(pos, mediaName, data);
-        pos += QPointF(0, 320);   // stack pages one after the other
+        // Display at a sane canvas width (a 300-dpi Letter page is
+        // 2550 units wide natively) and stack by the page's real
+        // displayed height plus a gap — the scaffold's fixed 320-unit
+        // advance overlapped each page over the previous one by ~90%.
+        ImageElement* element = mCanvas->addImageElement(pos, mediaName, data, kMaxImageDisplayWidth);
+        pos += QPointF(0, element->sceneBoundingRect().height() + 40);
     }
 }
